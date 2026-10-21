@@ -33,6 +33,10 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true);
   setClickThrough(true);
   win.loadFile('index.html');
+  // clique na foto/câmera: janela normal (sem isso herda a transparência e fica em branco)
+  win.webContents.setWindowOpenHandler(() => ({ action: 'allow', overrideBrowserWindowOptions: {
+    width: 660, height: 400, frame: true, transparent: false, backgroundColor: '#0e0e0e',
+    alwaysOnTop: true, skipTaskbar: false, autoHideMenuBar: true, title: 'Câmera' } }));
   win.webContents.on('did-finish-load', () => {
     NTFY && win.webContents.send('ntfy', NTFY);
     win.webContents.send('stream', STREAM.replace(/\/\/[^/@]*@/, '//'));
