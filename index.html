@@ -120,8 +120,8 @@ function showThinking() {
 const pic = document.getElementById('pic');
 const hidePic = () => { pic.hidden = true; pic.removeAttribute('src'); }; // sem src o stream para de baixar
 const showPic = src => { pic.src = src; pic.hidden = false; };
-function say(t) {
-  hidePic();
+function say(t, keepPic) {
+  if (!keepPic) hidePic();
   t = t.replace(/[*_#`]/g, '').trim(); // Gemini às vezes manda markdown
   clearInterval(typing); open(); text.textContent = '';
   talkUntil = performance.now() + Math.min(6000, t.length * 40);
@@ -136,8 +136,12 @@ clawdinho.on('ntfy', url => {
   new EventSource(url.replace(/\/$/, '') + '/sse').onmessage = e => {
     const m = JSON.parse(e.data);
     if (m.event !== 'message') return;
-    say([m.title, m.message].filter(Boolean).join(': '));
-    if (m.attachment?.url) showPic(m.attachment.url);
+    const alert = [m.title, m.message].filter(Boolean).join(': ');
+    if (!m.attachment?.url) return say(alert);
+    // mostra a foto já e só fala depois que o Gemini descrever a cena
+    showThinking(); showPic(m.attachment.url);
+    clawdinho.describe(alert, m.attachment.url)
+      .then(d => say(d ? `${alert}. ${d}` : alert, true), () => say(alert, true));
   };
 });
 clawdinho.on('thinking', v => { if (v) showThinking(); });

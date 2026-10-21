@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, screen, session } = require('electron');
 const path = require('path');
 
 // Google Gemini, plano gratuito — chave em https://aistudio.google.com/apikey
-// Só o texto que você digita é enviado. Nada de captura de tela ou monitoramento.
+// Vai para o Google: o texto que você digita e a foto de cada alerta do camera-monitor
+// (para descrever a cena). Nada de captura de tela ou monitoramento do PC.
 const conf = (env, file) => process.env[env] || (() => { try { return require('fs').readFileSync(path.join(__dirname, file), 'utf8').trim(); } catch { return ''; } })();
 const KEY = conf('GEMINI_API_KEY', 'key.txt');
 // mesmo tópico ntfy do camera-monitor (NTFY_URL); vazio = não escuta
@@ -47,6 +48,28 @@ function createWindow() {
   }, 33);
 }
 
+async function gemini(contents) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
+    body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM }] }, contents }),
+  });
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text).join('');
+}
+
+// foto do alerta -> o que parece estar acontecendo; fica fora do histórico da conversa
+async function describe(alert, url) {
+  const img = await fetch(url);
+  if (!img.ok) throw new Error(`foto ${img.status}`);
+  const data = Buffer.from(await img.arrayBuffer()).toString('base64');
+  return gemini([{ role: 'user', parts: [
+    { inline_data: { mime_type: img.headers.get('content-type') || 'image/jpeg', data } },
+    { text: `Foto do alerta "${alert}" da câmera de segurança do portão de casa. Em até 2 frases, diga o que você acha que está acontecendo. Só descreva, sem perguntas nem oferecer ações.` },
+  ] }]);
+}
+
 const history = []; // memória da conversa enquanto o app está aberto
 let busy = false;
 async function askModel(question) {
@@ -55,14 +78,7 @@ async function askModel(question) {
   win.webContents.send('thinking', true);
   history.push({ role: 'user', parts: [{ text: question }] });
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM }] }, contents: history.slice(-21) }),
-    });
-    if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text).join('') || 'Hmm, fiquei sem palavras.';
+    const text = await gemini(history.slice(-21)) || 'Hmm, fiquei sem palavras.';
     history.push({ role: 'model', parts: [{ text }] });
     win.webContents.send('tip', text);
   } catch (e) {
@@ -76,6 +92,7 @@ async function askModel(question) {
 
 ipcMain.on('mouse', (_, overUi) => setClickThrough(!overUi));
 ipcMain.on('ask', (_, q) => askModel(q));
+ipcMain.handle('describe', (_, alert, url) => describe(alert, url));
 ipcMain.on('move', (_, dx, dy) => {
   const [x, y] = win.getPosition();
   win.setPosition(x + dx, y + dy);
