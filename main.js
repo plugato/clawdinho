@@ -3,7 +3,8 @@ const path = require('path');
 
 // Google Gemini, plano gratuito — chave em https://aistudio.google.com/apikey
 // Vai para o Google: o texto que você digita e a foto de cada alerta do camera-monitor
-// (para descrever a cena). Nada de captura de tela ou monitoramento do PC.
+// (para descrever a cena), e a imagem aberta no balão quando você pergunta algo com ela
+// na tela. Nada de captura de tela ou monitoramento do PC.
 const conf = (env, file) => process.env[env] || (() => { try { return require('fs').readFileSync(path.join(__dirname, file), 'utf8').trim(); } catch { return ''; } })();
 const KEY = conf('GEMINI_API_KEY', 'key.txt');
 // mesmo tópico ntfy do camera-monitor (NTFY_URL); vazio = não escuta
@@ -59,26 +60,43 @@ async function gemini(contents) {
   return data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text).join('');
 }
 
+// foto do alerta ou quadro atual do stream (MJPEG: só o primeiro JPEG) para o Gemini
+async function image(url) {
+  const res = await fetch(url, { headers: url.startsWith(cam.origin) && camAuth ? { Authorization: camAuth } : {} });
+  if (!res.ok) throw new Error(`imagem ${res.status}`);
+  const type = res.headers.get('content-type') || 'image/jpeg';
+  if (!type.startsWith('multipart/')) return { mime_type: type, data: Buffer.from(await res.arrayBuffer()).toString('base64') };
+  const reader = res.body.getReader();
+  let buf = Buffer.alloc(0);
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error('stream acabou sem quadro');
+    buf = Buffer.concat([buf, value]);
+    const a = buf.indexOf('\xff\xd8', 0, 'latin1'), b = a < 0 ? -1 : buf.indexOf('\xff\xd9', a + 2, 'latin1');
+    if (b > 0) { reader.cancel(); return { mime_type: 'image/jpeg', data: buf.subarray(a, b + 2).toString('base64') }; }
+  }
+}
+
 // foto do alerta -> o que parece estar acontecendo; fica fora do histórico da conversa
 async function describe(alert, url) {
-  const img = await fetch(url);
-  if (!img.ok) throw new Error(`foto ${img.status}`);
-  const data = Buffer.from(await img.arrayBuffer()).toString('base64');
   return gemini([{ role: 'user', parts: [
-    { inline_data: { mime_type: img.headers.get('content-type') || 'image/jpeg', data } },
+    { inline_data: await image(url) },
     { text: `Foto do alerta "${alert}" da câmera de segurança do portão de casa. Em até 2 frases, diga o que você acha que está acontecendo. Só descreva, sem perguntas nem oferecer ações.` },
   ] }]);
 }
 
 const history = []; // memória da conversa enquanto o app está aberto
 let busy = false;
-async function askModel(question) {
+// pic: imagem visível no balão (stream ou foto de alerta); vai só nesta pergunta, o histórico guarda o texto
+async function askModel(question, pic) {
   if (busy) return;
   busy = true;
   win.webContents.send('thinking', true);
   history.push({ role: 'user', parts: [{ text: question }] });
   try {
-    const text = await gemini(history.slice(-21)) || 'Hmm, fiquei sem palavras.';
+    const contents = history.slice(-21);
+    if (pic) contents[contents.length - 1] = { role: 'user', parts: [{ inline_data: await image(pic) }, { text: question }] };
+    const text = await gemini(contents) || 'Hmm, fiquei sem palavras.';
     history.push({ role: 'model', parts: [{ text }] });
     win.webContents.send('tip', text);
   } catch (e) {
@@ -91,7 +109,7 @@ async function askModel(question) {
 }
 
 ipcMain.on('mouse', (_, overUi) => setClickThrough(!overUi));
-ipcMain.on('ask', (_, q) => askModel(q));
+ipcMain.on('ask', (_, q, pic) => askModel(q, pic));
 ipcMain.handle('describe', (_, alert, url) => describe(alert, url));
 ipcMain.on('move', (_, dx, dy) => {
   const [x, y] = win.getPosition();

@@ -130,7 +130,7 @@ function say(t, keepPic) {
   typing = setInterval(() => { text.textContent = t.slice(0, ++i * 2); if (i * 2 >= t.length) clearInterval(typing); }, 20);
   speak(t);
 }
-clawdinho.on('tip', say);
+clawdinho.on('tip', t => say(t, true)); // resposta mantém a imagem que estava aberta
 
 // alertas do camera-monitor: escuta o tópico ntfy (EventSource reconecta sozinho)
 clawdinho.on('ntfy', url => {
@@ -177,7 +177,7 @@ document.getElementById('close').onclick = () => { bubble.classList.remove('open
 document.getElementById('ask').onsubmit = e => {
   e.preventDefault();
   if (!q.value.trim()) return;
-  showThinking(); clawdinho.ask(q.value.trim()); q.value = '';
+  showThinking(); clawdinho.ask(q.value.trim(), pic.hidden ? '' : pic.src); q.value = '';
 };
 
 // --- animação ---
