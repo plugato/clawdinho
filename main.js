@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, session } = require('electron');
 const path = require('path');
 
 // Google Gemini, plano gratuito — chave em https://aistudio.google.com/apikey
@@ -83,8 +83,12 @@ ipcMain.on('move', (_, dx, dy) => {
 ipcMain.on('quit', () => app.quit());
 
 // stream.txt pode ter usuário:senha@ (acesso direto na rede local, login básico)
+// o Chromium não pede login para <img> de outra origem, então o header vai em toda requisição ao Pi
 const cam = new URL(STREAM);
-app.on('login', (e, _, __, ___, cb) => { e.preventDefault(); cb(decodeURIComponent(cam.username), decodeURIComponent(cam.password)); });
+const camAuth = cam.username && 'Basic ' + Buffer.from(`${decodeURIComponent(cam.username)}:${decodeURIComponent(cam.password)}`).toString('base64');
+app.whenReady().then(() => camAuth && session.defaultSession.webRequest.onBeforeSendHeaders(
+  { urls: [cam.origin + '/*'] },
+  (d, cb) => cb({ requestHeaders: { ...d.requestHeaders, Authorization: camAuth } })));
 
 // só um Clawdinho por vez
 if (!app.requestSingleInstanceLock()) app.quit();
