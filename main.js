@@ -84,7 +84,10 @@ let cam;
 ipcMain.on('stream', () => {
   if (cam && !cam.isDestroyed()) return cam.close();
   cam = new BrowserWindow({ width: 640, height: 400, alwaysOnTop: true, autoHideMenuBar: true, title: 'Câmera' });
-  cam.loadURL(STREAM);
+  // stream.txt pode ter usuário:senha@ (acesso direto na rede local, login básico)
+  const u = new URL(STREAM);
+  cam.webContents.on('login', (e, _, __, cb) => { e.preventDefault(); cb(decodeURIComponent(u.username), decodeURIComponent(u.password)); });
+  cam.loadURL(STREAM.replace(/\/\/[^/@]*@/, '//'));
 });
 
 // só um Clawdinho por vez
