@@ -33,7 +33,10 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true);
   setClickThrough(true);
   win.loadFile('index.html');
-  win.webContents.on('did-finish-load', () => NTFY && win.webContents.send('ntfy', NTFY));
+  win.webContents.on('did-finish-load', () => {
+    NTFY && win.webContents.send('ntfy', NTFY);
+    win.webContents.send('stream', STREAM.replace(/\/\/[^/@]*@/, '//'));
+  });
 
   // posição do mouse só para os olhos seguirem o cursor; fica local, não é enviada a lugar nenhum
   setInterval(() => {
@@ -79,16 +82,9 @@ ipcMain.on('move', (_, dx, dy) => {
 });
 ipcMain.on('quit', () => app.quit());
 
-// janela da câmera; login do Cloudflare Access fica salvo na sessão do Electron
-let cam;
-ipcMain.on('stream', () => {
-  if (cam && !cam.isDestroyed()) return cam.close();
-  cam = new BrowserWindow({ width: 640, height: 400, alwaysOnTop: true, autoHideMenuBar: true, title: 'Câmera' });
-  // stream.txt pode ter usuário:senha@ (acesso direto na rede local, login básico)
-  const u = new URL(STREAM);
-  cam.webContents.on('login', (e, _, __, cb) => { e.preventDefault(); cb(decodeURIComponent(u.username), decodeURIComponent(u.password)); });
-  cam.loadURL(STREAM.replace(/\/\/[^/@]*@/, '//'));
-});
+// stream.txt pode ter usuário:senha@ (acesso direto na rede local, login básico)
+const cam = new URL(STREAM);
+app.on('login', (e, _, __, ___, cb) => { e.preventDefault(); cb(decodeURIComponent(cam.username), decodeURIComponent(cam.password)); });
 
 // só um Clawdinho por vez
 if (!app.requestSingleInstanceLock()) app.quit();

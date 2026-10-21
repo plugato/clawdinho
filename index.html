@@ -119,8 +119,10 @@ function showThinking() {
 }
 const pic = document.getElementById('pic');
 pic.onclick = () => window.open(pic.src);
+const hidePic = () => { pic.hidden = true; pic.removeAttribute('src'); }; // sem src o stream para de baixar
+const showPic = src => { pic.src = src; pic.hidden = false; };
 function say(t) {
-  pic.hidden = true;
+  hidePic();
   t = t.replace(/[*_#`]/g, '').trim(); // Gemini às vezes manda markdown
   clearInterval(typing); open(); text.textContent = '';
   talkUntil = performance.now() + Math.min(6000, t.length * 40);
@@ -136,7 +138,7 @@ clawdinho.on('ntfy', url => {
     const m = JSON.parse(e.data);
     if (m.event !== 'message') return;
     say([m.title, m.message].filter(Boolean).join(': '));
-    if (m.attachment?.url) { pic.src = m.attachment.url; pic.hidden = false; }
+    if (m.attachment?.url) showPic(m.attachment.url);
   };
 });
 clawdinho.on('thinking', v => { if (v) showThinking(); });
@@ -159,8 +161,15 @@ addEventListener('mouseup', () => {
   drag = null;
 });
 canvas.addEventListener('contextmenu', () => clawdinho.quit()); // confirm() bloqueava a janela
-document.getElementById('cam').onclick = () => clawdinho.stream();
-document.getElementById('close').onclick = () => { bubble.classList.remove('open'); speechSynthesis.cancel(); };
+// câmera ao vivo (MJPEG) dentro do balão
+let streamUrl;
+clawdinho.on('stream', url => streamUrl = url);
+document.getElementById('cam').onclick = () => {
+  if (!pic.hidden && pic.src === streamUrl) return hidePic();
+  clearInterval(typing); speechSynthesis.cancel(); open(); text.textContent = '';
+  showPic(streamUrl);
+};
+document.getElementById('close').onclick = () => { bubble.classList.remove('open'); hidePic(); speechSynthesis.cancel(); };
 document.getElementById('ask').onsubmit = e => {
   e.preventDefault();
   if (!q.value.trim()) return;
