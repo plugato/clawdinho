@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg: #faf9f5; --fg: #2b2a27; --muted: #8a8578; --line: #e8e4da; --accent: #d97757; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #262624; --fg: #f0eee6; --muted: #a39e93; --line: #3b3a36; } }
+  html, body { margin: 0; background: transparent; overflow: hidden; user-select: none;
+    font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+  #bubble {
+    position: absolute; left: 12px; right: 12px; bottom: 200px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    padding: 12px 14px 10px; opacity: 0; transform: translateY(8px) scale(.97); transform-origin: 70% 100%;
+    transition: opacity .18s ease, transform .18s ease; pointer-events: none;
+  }
+  #bubble.open { opacity: 1; transform: none; pointer-events: auto; }
+  #bubble::after { /* rabinho do balão */
+    content: ''; position: absolute; bottom: -7px; right: 130px; width: 12px; height: 12px;
+    background: var(--bg); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg);
+  }
+  header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+  header b { color: var(--accent); font-weight: 600; }
+  header span { flex: 1; }
+  header button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 6px; }
+  header button:hover { background: var(--line); color: var(--fg); }
+  #text { margin: 0 0 10px; max-height: 150px; overflow-y: auto; user-select: text; white-space: pre-wrap; }
+  #text::-webkit-scrollbar { width: 6px; } #text::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+  .dots span { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: var(--accent);
+    animation: hop 1s infinite ease-in-out; }
+  .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes hop { 0%, 60%, 100% { transform: none; opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
+  #pic { display: block; width: 100%; max-height: 130px; object-fit: contain; margin: 0 0 8px; border-radius: 10px; cursor: pointer; }
+  form { display: flex; gap: 6px; }
+  #q { flex: 1; min-width: 0; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--fg); font: inherit; outline: none; }
+  #q:focus { border-color: var(--accent); }
+  form button { width: 32px; border: 0; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; font-size: 15px; }
+  #avatar { position: absolute; right: 40px; bottom: 0; width: 200px; height: 200px; cursor: grab; }
+</style>
+</head>
+<body>
+<div id="bubble" class="ui">
+  <header><b>Clawdinho</b><span></span>
+    <button id="voice" title="Voz ligada/desligada">🔊</button>
+    <button id="close" title="Fechar balão">✕</button>
+  </header>
+  <p id="text"></p>
+  <img id="pic" hidden title="Clique para abrir">
+  <form id="ask"><input id="q" placeholder="Pergunte algo…" autocomplete="off"><button title="Enviar">➤</button></form>
+</div>
+<canvas id="avatar" class="ui" title="Clique: conversar · Arraste: mover · Botão direito: sair"></canvas>
+
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('avatar');
+const bubble = document.getElementById('bubble');
+const text = document.getElementById('text');
+const q = document.getElementById('q');
+
+// --- cena 3D com fundo transparente ---
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(200, 200, false);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+camera.position.set(0, 0, 6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x553322, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(2, 3, 4); scene.add(sun);
+
+// Clawdinho: bloco laranja com olhos, bracinhos e 4 patinhas (estilo voxel)
+const orange = new THREE.MeshStandardMaterial({ color: 0xd77757, roughness: 0.6, flatShading: true });
+const black = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3 });
+const box = (w, h, d, mat, x, y, z, parent) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); parent.add(m); return m;
+};
+const body = new THREE.Group(); scene.add(body);
+box(2.2, 1.3, 1.0, orange, 0, 0.2, 0, body);                       // tronco
+const arms = [-1, 1].map(s => box(0.35, 0.35, 0.6, orange, s * 1.27, 0.1, 0, body));
+const legs = [-0.8, -0.3, 0.3, 0.8].map(x => box(0.22, 0.5, 0.5, orange, x, -0.7, 0, body));
+const eyes = [-0.5, 0.5].map(x => box(0.18, 0.4, 0.05, black, x, 0.35, 0.52, body));
+// --- interação ---
+let cursor = { x: 0, y: 0 }, thinking = false, talkUntil = 0;
+clawdinho.on('cursor', c => cursor = c);
+clawdinho.on('thinking', v => thinking = v);
+// --- balão + voz ---
+const voiceBtn = document.getElementById('voice');
+let voiceOn = true, typing;
+try { voiceOn = localStorage.getItem('voice') !== 'off'; } catch {}
+const paintVoice = () => voiceBtn.textContent = voiceOn ? '🔊' : '🔇';
+paintVoice();
+voiceBtn.onclick = () => {
+  voiceOn = !voiceOn; paintVoice(); speechSynthesis.cancel();
+  try { localStorage.setItem('voice', voiceOn ? 'on' : 'off'); } catch {}
+};
+
+const ptVoice = () => {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('pt'));
+  return vs.find(v => /natural|online/i.test(v.name)) || vs.find(v => /br/i.test(v.lang)) || vs[0];
+};
+function speak(t) {
+  speechSynthesis.cancel();
+  if (!voiceOn) return;
+  const u = new SpeechSynthesisUtterance(t);
+  u.voice = ptVoice() || null; u.lang = 'pt-BR'; u.rate = 1.05; u.pitch = 1.15;
+  u.onstart = () => talkUntil = Infinity;
+  u.onend = u.onerror = () => talkUntil = 0;
+  speechSynthesis.speak(u);
+}
+
+function open() { bubble.classList.add('open'); }
+function showThinking() {
+  clearInterval(typing); open();
+  text.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
+}
+const pic = document.getElementById('pic');
+pic.onclick = () => window.open(pic.src);
+function say(t) {
+  pic.hidden = true;
+  t = t.replace(/[*_#`]/g, '').trim(); // Gemini às vezes manda markdown
+  clearInterval(typing); open(); text.textContent = '';
+  talkUntil = performance.now() + Math.min(6000, t.length * 40);
+  let i = 0;
+  typing = setInterval(() => { text.textContent = t.slice(0, ++i * 2); if (i * 2 >= t.length) clearInterval(typing); }, 20);
+  speak(t);
+}
+clawdinho.on('tip', say);
+
+// alertas do camera-monitor: escuta o tópico ntfy (EventSource reconecta sozinho)
+clawdinho.on('ntfy', url => {
+  new EventSource(url.replace(/\/$/, '') + '/sse').onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.event !== 'message') return;
+    say([m.title, m.message].filter(Boolean).join(': '));
+    if (m.attachment?.url) { pic.src = m.attachment.url; pic.hidden = false; }
+  };
+});
+clawdinho.on('thinking', v => { if (v) showThinking(); });
+
+// janela só captura o mouse quando ele está sobre o avatar/balão
+document.querySelectorAll('.ui').forEach(el => {
+  el.addEventListener('mouseenter', () => clawdinho.mouse(true));
+  el.addEventListener('mouseleave', () => clawdinho.mouse(false));
+});
+
+let drag = null, moved = false;
+canvas.addEventListener('mousedown', e => { if (e.button === 0) { drag = { x: e.screenX, y: e.screenY }; moved = false; } });
+addEventListener('mousemove', e => {
+  if (!drag) return;
+  const dx = e.screenX - drag.x, dy = e.screenY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 2) { moved = true; clawdinho.move(dx, dy); drag = { x: e.screenX, y: e.screenY }; }
+});
+addEventListener('mouseup', () => {
+  if (drag && !moved) { if (!bubble.classList.contains('open')) say('Oi! Em que posso ajudar?'); q.focus(); }
+  drag = null;
+});
+canvas.addEventListener('contextmenu', () => clawdinho.quit()); // confirm() bloqueava a janela
+document.getElementById('close').onclick = () => { bubble.classList.remove('open'); speechSynthesis.cancel(); };
+document.getElementById('ask').onsubmit = e => {
+  e.preventDefault();
+  if (!q.value.trim()) return;
+  showThinking(); clawdinho.ask(q.value.trim()); q.value = '';
+};
+
+// --- animação ---
+const rect = () => canvas.getBoundingClientRect();
+function frame(t) {
+  t /= 1000;
+  const talking = performance.now() < talkUntil;
+  // patinhas andam quando fala/pensa
+  legs.forEach((l, i) => l.position.y = -0.7 + ((talking || thinking) ? Math.max(0, Math.sin(t * 14 + i * Math.PI / 2)) * 0.12 : 0));
+  arms.forEach((a, i) => a.position.y = 0.1 + Math.sin(t * (thinking ? 10 : 2) + i * Math.PI) * 0.06);
+
+  // olhar para o cursor (posição global da tela)
+  const r = rect();
+  const dx = (cursor.x - (r.left + r.width / 2)) / 600;
+  const dy = (cursor.y - (r.top + r.height / 2)) / 600;
+  const lx = Math.max(-1, Math.min(1, dx)), ly = Math.max(-1, Math.min(1, dy));
+  body.rotation.y += ((thinking ? Math.sin(t * 6) * 0.4 : lx * 0.5) - body.rotation.y) * 0.1;
+  body.rotation.x += (ly * 0.3 - body.rotation.x) * 0.1;
+  eyes.forEach((e, i) => {
+    e.position.x = (i ? 0.5 : -0.5) + lx * 0.12; e.position.y = 0.35 - ly * 0.1;
+    e.scale.y = (t % 4 < 0.12) ? 0.15 : 1; // piscar
+  });
+
+  body.position.y = Math.sin(t * 2) * 0.05 + (talking ? Math.abs(Math.sin(t * 15)) * 0.15 : 0);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

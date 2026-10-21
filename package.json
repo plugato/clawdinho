@@ -1,0 +1,8 @@
+{
+  "name": "clawdinho",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": { "start": "electron ." },
+  "dependencies": { "three": "^0.186.1" },
+  "devDependencies": { "electron": "^45.0.0" }
+}
