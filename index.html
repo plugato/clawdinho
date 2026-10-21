@@ -11,7 +11,8 @@
     position: absolute; left: 12px; right: 12px; bottom: 200px;
     background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
-    padding: 12px 14px 10px; opacity: 0; transform: translateY(8px) scale(.97); transform-origin: 70% 100%;
+    padding: 12px 14px 10px; opacity: 0;
+    max-height: calc(100vh - 212px); box-sizing: border-box; display: flex; flex-direction: column; /* cabe acima do avatar */ transform: translateY(8px) scale(.97); transform-origin: 70% 100%;
     transition: opacity .18s ease, transform .18s ease; pointer-events: none;
   }
   #bubble.open { opacity: 1; transform: none; pointer-events: auto; }
@@ -24,13 +25,13 @@
   header span { flex: 1; }
   header button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 6px; }
   header button:hover { background: var(--line); color: var(--fg); }
-  #text { margin: 0 0 10px; max-height: 150px; overflow-y: auto; user-select: text; white-space: pre-wrap; }
+  #text { margin: 0 0 10px; min-height: 1.5em; overflow-y: auto; user-select: text; white-space: pre-wrap; }
   #text::-webkit-scrollbar { width: 6px; } #text::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
   .dots span { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: var(--accent);
     animation: hop 1s infinite ease-in-out; }
   .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
   @keyframes hop { 0%, 60%, 100% { transform: none; opacity: .4; } 30% { transform: translateY(-4px); opacity: 1; } }
-  #pic { display: block; width: 100%; max-height: 130px; object-fit: contain; margin: 0 0 8px; border-radius: 10px; }
+  #pic { display: block; flex-shrink: 0; width: 100%; max-height: 130px; object-fit: contain; margin: 0 0 8px; border-radius: 10px; }
   form { display: flex; gap: 6px; }
   #q { flex: 1; min-width: 0; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
     background: transparent; color: var(--fg); font: inherit; outline: none; }
