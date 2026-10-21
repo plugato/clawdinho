@@ -7,6 +7,7 @@ const conf = (env, file) => process.env[env] || (() => { try { return require('f
 const KEY = conf('GEMINI_API_KEY', 'key.txt');
 // mesmo tópico ntfy do camera-monitor (NTFY_URL); vazio = não escuta
 const NTFY = conf('NTFY_URL', 'ntfy.txt');
+const STREAM = conf('STREAM_URL', 'stream.txt') || 'https://camera.ancalagon.com.br/stream';
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const W = 340, H = 460;
 
@@ -78,4 +79,14 @@ ipcMain.on('move', (_, dx, dy) => {
 });
 ipcMain.on('quit', () => app.quit());
 
-app.whenReady().then(createWindow);
+// janela da câmera; login do Cloudflare Access fica salvo na sessão do Electron
+let cam;
+ipcMain.on('stream', () => {
+  if (cam && !cam.isDestroyed()) return cam.close();
+  cam = new BrowserWindow({ width: 640, height: 400, alwaysOnTop: true, autoHideMenuBar: true, title: 'Câmera' });
+  cam.loadURL(STREAM);
+});
+
+// só um Clawdinho por vez
+if (!app.requestSingleInstanceLock()) app.quit();
+else app.whenReady().then(createWindow);

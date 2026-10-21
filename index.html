@@ -42,6 +42,7 @@
 <body>
 <div id="bubble" class="ui">
   <header><b>Clawdinho</b><span></span>
+    <button id="cam" title="Mostrar/esconder câmera">📷</button>
     <button id="voice" title="Voz ligada/desligada">🔊</button>
     <button id="close" title="Fechar balão">✕</button>
   </header>
@@ -158,6 +159,7 @@ addEventListener('mouseup', () => {
   drag = null;
 });
 canvas.addEventListener('contextmenu', () => clawdinho.quit()); // confirm() bloqueava a janela
+document.getElementById('cam').onclick = () => clawdinho.stream();
 document.getElementById('close').onclick = () => { bubble.classList.remove('open'); speechSynthesis.cancel(); };
 document.getElementById('ask').onsubmit = e => {
   e.preventDefault();
