@@ -1,10 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// ponte genérica: as features escolhem os próprios canais (ex.: 'chat:ask')
 contextBridge.exposeInMainWorld('clawdinho', {
-  mouse: overUi => ipcRenderer.send('mouse', overUi),
-  ask: (q, pic) => ipcRenderer.send('ask', q, pic),
-  describe: (alert, url) => ipcRenderer.invoke('describe', alert, url),
-  move: (dx, dy) => ipcRenderer.send('move', dx, dy),
-  quit: () => ipcRenderer.send('quit'),
-  on: (ch, fn) => ipcRenderer.on(ch, (_, v) => fn(v)),
+  send: (ch, ...a) => ipcRenderer.send(ch, ...a),
+  invoke: (ch, ...a) => ipcRenderer.invoke(ch, ...a),
+  on: (ch, fn) => ipcRenderer.on(ch, (_, ...a) => fn(...a)),
 });
