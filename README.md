@@ -4,7 +4,7 @@ Assistente de mesa (Electron) que vive no canto da tela: conversa pelo Gemini, m
 [camera-monitor](https://github.com/plugato/camera-monitor) e fala os alertas dela.
 
 ```
-start.bat            abre o app (é o que a inicialização do Windows chama)
+start.bat            abre o app à mão no Windows
 main.js              janela, mouse, carregador de features
 preload.js           ponte genérica send/invoke/on entre balão e main
 index.html           markup e CSS do balão
@@ -15,7 +15,18 @@ ui/avatar.js         o bonequinho 3D
 features/chat        caixa de pergunta → Gemini (com a imagem aberta, se houver)
 features/camera      botão 📷: stream ao vivo no balão
 features/alerts      alertas do ntfy, foto descrita pelo Gemini
+features/update      abre com o login (Windows e Linux) e se atualiza pelo git
 ```
+
+## Início automático e atualização (Windows e Linux)
+
+Rode do clone do GitHub (`git clone` + `npm install`) e abra uma vez (`start.bat` no Windows,
+`npm start` no Linux). A partir daí o app abre sozinho no login: no Windows fica em Configurações →
+Apps → Inicialização; no Linux, em `~/.config/autostart/clawdinho.desktop`. A cada hora ele puxa a
+`main` do GitHub: se mudou, faz fast-forward, roda `npm install` quando `package.json` mudou e
+reinicia sozinho. Precisa de `git` e `npm` no PATH. Com alterações locais em arquivos versionados,
+ou commits locais que ainda não estão no GitHub, ele não atualiza. Para desligar as duas coisas,
+apague `features/update` e tire o Clawdinho da inicialização.
 
 ## Configuração
 
