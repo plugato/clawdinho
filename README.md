@@ -27,7 +27,8 @@ As variáveis podem ser definidas no ambiente do sistema ou em `.env` na raiz. P
 | --- | --- |
 | `GEMINI_API_KEY` | chave do Gemini |
 | `NTFY_URL` | tópico ntfy do camera-monitor; vazio = sem alertas |
-| `STREAM_URL` | stream MJPEG; aceita `http://usuario:senha@ip:8091/stream` |
+| `STREAM_URL` | stream MJPEG (padrão `https://camera.ancalagon.com.br/stream`); em casa aceita `http://usuario:senha@ip:8091/stream` |
+| `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` | service token do Cloudflare Access, para ver a câmera de fora de casa |
 | `GEMINI_MODEL` | modelo (padrão `gemini-3.5-flash-lite`) |
 
 ## Nova feature

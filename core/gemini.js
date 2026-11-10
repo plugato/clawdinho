@@ -20,13 +20,12 @@ async function gemini(contents) {
   return data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text).join('');
 }
 
-// origem -> header Authorization (a feature camera registra o login do Pi)
+// origem -> headers de login (a feature camera registra o do Pi / Cloudflare Access)
 const auth = new Map();
 
 // imagem de uma URL como inline_data do Gemini; MJPEG vira só o quadro atual
 async function image(url) {
-  const a = auth.get(new URL(url).origin);
-  const res = await fetch(url, { headers: a ? { Authorization: a } : {} });
+  const res = await fetch(url, { headers: auth.get(new URL(url).origin) || {} });
   if (!res.ok) throw new Error(`imagem ${res.status}`);
   const type = res.headers.get('content-type') || 'image/jpeg';
   if (!type.startsWith('multipart/')) return { mime_type: type, data: Buffer.from(await res.arrayBuffer()).toString('base64') };
