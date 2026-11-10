@@ -5,6 +5,9 @@ const $ = id => document.getElementById(id);
 const canvas = $('avatar'), bubble = $('bubble'), text = $('text'), pic = $('pic'), q = $('q');
 
 bridge.on('cursor', c => state.cursor = c);
+if (window.matchMedia('(pointer: fine)').matches) {
+  document.addEventListener('pointermove', e => { state.cursor = { x: e.clientX, y: e.clientY }; });
+}
 
 // --- voz ---
 const voiceBtn = $('voice');
@@ -59,17 +62,10 @@ document.querySelectorAll('.ui').forEach(el => {
   el.addEventListener('mouseleave', () => bridge.send('mouse', false));
 });
 
-// clique: conversar · arraste: mover · botão direito: sair
-let drag = null, moved = false;
-canvas.addEventListener('mousedown', e => { if (e.button === 0) { drag = { x: e.screenX, y: e.screenY }; moved = false; } });
-addEventListener('mousemove', e => {
-  if (!drag) return;
-  const dx = e.screenX - drag.x, dy = e.screenY - drag.y;
-  if (Math.abs(dx) + Math.abs(dy) > 2) { moved = true; bridge.send('move', dx, dy); drag = { x: e.screenX, y: e.screenY }; }
-});
-addEventListener('mouseup', () => {
-  if (drag && !moved) { if (!bubble.classList.contains('open')) say('Oi! Em que posso ajudar?'); q.focus(); }
-  drag = null;
+// o avatar é arrastável; uma área não arrastável no rosto abre a conversa
+$('avatar-chat').addEventListener('click', () => {
+  if (!bubble.classList.contains('open')) say('Oi! Em que posso ajudar?');
+  q.focus();
 });
 canvas.addEventListener('contextmenu', () => bridge.send('quit')); // confirm() bloqueava a janela
 $('close').onclick = () => { bubble.classList.remove('open'); hidePic(); speechSynthesis.cancel(); };

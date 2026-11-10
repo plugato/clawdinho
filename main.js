@@ -4,11 +4,21 @@ const path = require('path');
 const conf = require('./core/config');
 const { gemini, image, auth } = require('./core/gemini');
 
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('use-gl', 'angle');
+  app.commandLine.appendSwitch('use-angle', 'swiftshader');
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+  app.commandLine.appendSwitch('disable-features', 'Vulkan');
+}
+
 const W = 340, H = 460;
 let win;
 
 // clica "através" da janela fora do avatar/balão
-const setClickThrough = ignore => win.setIgnoreMouseEvents(ignore, { forward: true });
+const setClickThrough = ignore => {
+  if (process.platform === 'linux' && process.env.WAYLAND_DISPLAY) return;
+  win.setIgnoreMouseEvents(ignore, { forward: true });
+};
 
 function createWindow() {
   const { workArea } = screen.getPrimaryDisplay();
@@ -22,23 +32,26 @@ function createWindow() {
   });
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true);
-  setClickThrough(true);
-  win.loadFile('index.html');
-
-  // posição do mouse só para os olhos seguirem o cursor; fica local, não é enviada a lugar nenhum
-  setInterval(() => {
+  win.loadFile('index.html').then(() => {
     if (win.isDestroyed()) return;
-    const p = screen.getCursorScreenPoint();
-    const b = win.getBounds();
-    win.webContents.send('cursor', { x: p.x - b.x, y: p.y - b.y });
-  }, 33);
+    win.show();
+    win.setAlwaysOnTop(true, 'screen-saver');
+    win.setVisibleOnAllWorkspaces(true);
+    setClickThrough(true);
+  }).catch(error => console.error('Falha ao abrir a interface:', error));
+
+  // Wayland não fornece posição global confiável; nesse backend a UI usa coordenadas locais.
+  if (!(process.platform === 'linux' && process.env.WAYLAND_DISPLAY)) {
+    setInterval(() => {
+      if (win.isDestroyed()) return;
+      const p = screen.getCursorScreenPoint();
+      const b = win.getBounds();
+      win.webContents.send('cursor', { x: p.x - b.x, y: p.y - b.y });
+    }, 33);
+  }
 }
 
 ipcMain.on('mouse', (_, overUi) => setClickThrough(!overUi));
-ipcMain.on('move', (_, dx, dy) => {
-  const [x, y] = win.getPosition();
-  win.setPosition(x + dx, y + dy);
-});
 ipcMain.on('quit', () => app.quit());
 
 // features/<nome>/main.js recebe o ctx; features/<nome>/ui.js é carregado no balão (ver README)

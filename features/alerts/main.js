@@ -1,6 +1,6 @@
 // alertas do camera-monitor: mesmo tópico ntfy dele (NTFY_URL); vazio = não escuta
 module.exports = ({ ipc, conf, gemini, image }) => {
-  ipc.handle('alerts:url', () => conf('NTFY_URL', 'ntfy.txt'));
+  ipc.handle('alerts:url', () => conf('NTFY_URL'));
 
   // foto do alerta -> o que parece estar acontecendo; fica fora do histórico da conversa
   ipc.handle('alerts:describe', async (_, alert, url) => gemini([{ role: 'user', parts: [

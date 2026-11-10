@@ -21,12 +21,14 @@ features/alerts      alertas do ntfy, foto descrita pelo Gemini
 
 Variável de ambiente ou arquivo na raiz (fora do git):
 
-| Variável | Arquivo | Para quê |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | `key.txt` | chave do Gemini |
-| `NTFY_URL` | `ntfy.txt` | tópico ntfy do camera-monitor; vazio = sem alertas |
-| `STREAM_URL` | `stream.txt` | stream MJPEG; aceita `http://usuario:senha@ip:8091/stream` |
-| `GEMINI_MODEL` | | modelo (padrão `gemini-3.5-flash-lite`) |
+As variáveis podem ser definidas no ambiente do sistema ou em `.env` na raiz. Para compatibilidade, a chave do Gemini e o stream também podem continuar em `key.txt` e `stream.txt`.
+
+| Variável | Para quê |
+| --- | --- |
+| `GEMINI_API_KEY` | chave do Gemini |
+| `NTFY_URL` | tópico ntfy do camera-monitor; vazio = sem alertas |
+| `STREAM_URL` | stream MJPEG; aceita `http://usuario:senha@ip:8091/stream` |
+| `GEMINI_MODEL` | modelo (padrão `gemini-3.5-flash-lite`) |
 
 ## Nova feature
 

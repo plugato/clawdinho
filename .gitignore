@@ -1,4 +1,4 @@
 node_modules/
+.env
 key.txt
-ntfy.txt
 stream.txt

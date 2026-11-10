@@ -37,7 +37,9 @@
     background: transparent; color: var(--fg); font: inherit; outline: none; }
   #q:focus { border-color: var(--accent); }
   form button { width: 32px; border: 0; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; font-size: 15px; }
-  #avatar { position: absolute; right: 40px; bottom: 0; width: 200px; height: 200px; cursor: grab; }
+  #avatar { position: absolute; right: 40px; bottom: 0; width: 200px; height: 200px; cursor: grab; -webkit-app-region: drag; }
+  #avatar-chat { position: absolute; z-index: 1; right: 112px; bottom: 70px; width: 56px; height: 56px;
+    padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; -webkit-app-region: no-drag; }
 </style>
 </head>
 <body>
@@ -50,7 +52,8 @@
   <img id="pic" hidden>
   <form id="ask"><input id="q" placeholder="Pergunte algo…" autocomplete="off"><button title="Enviar">➤</button></form>
 </div>
-<canvas id="avatar" class="ui" title="Clique: conversar · Arraste: mover · Botão direito: sair"></canvas>
+<canvas id="avatar" class="ui" title="Arraste o personagem para mover"></canvas>
+<button id="avatar-chat" class="ui" title="Conversar com Clawdinho" aria-label="Conversar com Clawdinho"></button>
 
 <script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js" } }</script>
 <script type="module" src="ui/app.js"></script>
